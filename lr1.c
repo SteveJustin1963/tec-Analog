@@ -31,11 +31,12 @@ int main()
     double b1 = ss_xy1 / ss_xx1;
     double b2 = ss_xy2 / ss_xx2;
 
-    // Calculate b3 (intercept)
-    double b3 = mean_y - b1 * mean_x1 - b2 * mean_x2;
+    // Calculate b0 (intercept)
+double b0 = mean_y - b1 * mean_x1 - b2 * mean_x2;
 
-    // Print the result
-    printf("The line of best fit is: y = %lf + %lfx1 + %lfx2\n", b3, b1, b2);
+// Print the result
+printf("The line of best fit is: y = %lf + %lfx1 + %lfx2\n", b0, b1, b2);
+
 
     return 0;
 }
