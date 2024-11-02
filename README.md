@@ -25,4 +25,5 @@ considerations
 - https://github.com/SteveJustin1963/tec-Analog-CPLD-THAT
 - https://github.com/SteveJustin1963/tec-Analog-PEAC/tree/master
 - https://github.com/SteveJustin1963/tec-Stochastic
-
+- https://github.com/SteveJustin1963/linear-regression
+- 
