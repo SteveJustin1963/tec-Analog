@@ -4,7 +4,7 @@ considerations
 - control the analog cct topology
 
 
-## Investigate
+### cross connect 
+- https://hackaday.io/project/191238-jumperless
 
-pcb	jumperless		https://hackaday.io/project/191238-jumperless	use this to make tec-1 and analog computer
 
