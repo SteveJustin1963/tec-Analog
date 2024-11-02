@@ -1,3 +1,5 @@
+;  C code performs multiple linear regression to find a line of best fit for predicting a dependent variable 
+
 #include <stdio.h>
 
 #define N 5
