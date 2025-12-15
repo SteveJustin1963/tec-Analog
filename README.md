@@ -435,11 +435,11 @@ Where:
 ---
 
 ### Resistance as a function of state
-
+```math
 [
 M(w) = R_{ON}\frac{w}{D} + R_{OFF}\left(1 - \frac{w}{D}\right)
 ]
-
+```
 ---
 
 ### Output voltage mapping (Integrator Output)
