@@ -1430,3 +1430,12 @@ If you want next, we can:
 4️⃣ formalise **memristor dynamics**
 
 Say the number.
+
+
+
+
+
+# reed relays with shift registers
+
+You control reed relays with shift registers by connecting the register's output pins (like from a 74HC595) to the coil input of each reed relay, using a transistor driver if needed for higher current, then sending serial data (1s and 0s) to activate specific relay coils sequentially via SPI/Shift-In pins (Data, Clock, Latch) from a microcontroller, effectively multiplexing many relays with few pins. Reed relays often need less power than standard ones, sometimes allowing direct drive, but a transistor buffer (MOSFET) is safer for high counts or noisy environments
+
