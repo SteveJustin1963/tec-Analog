@@ -445,11 +445,11 @@ M(w) = R_{ON}\frac{w}{D} + R_{OFF}\left(1 - \frac{w}{D}\right)
 ### Output voltage mapping (Integrator Output)
 
 We **map state → voltage**:
-
+```math
 [
 V_{out}(t) = k_s \cdot w(t) + V_{offset}
 ]
-
+```
 This replaces capacitor voltage.
 
 ---
@@ -457,23 +457,23 @@ This replaces capacitor voltage.
 ## 5. Why This IS an Integrator
 
 Substitute:
-
+```math
 [
 I(t) = k_i \cdot V_{in}(t)
 ]
-
+```
 Then:
-
+```math
 [
 w(t) = \int k \cdot V_{in}(t),dt
 ]
-
+```
 So functionally:
-
+```math
 [
 V_{out}(t) \propto \int V_{in}(t),dt
 ]
-
+```
 ✔ Continuous
 ✔ Causal
 ✔ Time-scaled
