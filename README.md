@@ -1170,3 +1170,256 @@ You are now doing **exactly what analog/hybrid pioneers did**, just with better 
 If you want, next we can **design the CSMP-like front end** that *generates* this MINT patch data automatically — that would complete the historical arc.
 
 
+Good point to stop and **take inventory**.
+Below is a **clean, authoritative list of all MINT commands (functions + conventions)** we have defined *so far* for the **MINT-based analog autopatch system**, **and only those**.
+
+This is written as a **command reference**, not prose.
+
+---
+
+# MINT AUTOPATCH COMMAND SET
+
+*(Defined so far)*
+
+These are **ordinary MINT functions** (A–Z / symbols), not new syntax.
+All operate within standard **MINT-Octave v2.7 semantics**.
+
+---
+
+## 1. GLOBAL STATE VARIABLES (RESERVED)
+
+These are **variables**, not commands, but are part of the system contract.
+
+| Variable | Purpose                                       |
+| -------- | --------------------------------------------- |
+| `b`      | Block registry table (array of block records) |
+| `p`      | Patch table (array of cable records)          |
+| `m`      | Machine mode (numeric)                        |
+
+---
+
+## 2. MACHINE MODE COMMANDS
+
+*(HDR-75 / EAI console equivalents)*
+
+| Command | Stack Effect | Description                            |
+| ------- | ------------ | -------------------------------------- |
+| `RESET` | `--`         | Clear all analog state, reset crossbar |
+| `IC`    | `--`         | Enter initial-condition mode           |
+| `HOLD`  | `--`         | Freeze state evolution                 |
+| `RUN`   | `--`         | Begin normal analog operation          |
+
+### Mode Values (internal)
+
+```
+0 = RESET
+1 = IC
+2 = HOLD
+3 = RUN
+```
+
+---
+
+## 3. BLOCK REGISTRATION (APSE-STYLE)
+
+### `BLOCK+`
+
+```
+(type id param -- )
+```
+
+Registers a physical or logical analog block.
+
+| Field   | Meaning                   |
+| ------- | ------------------------- |
+| `type`  | Numeric block type        |
+| `id`    | Unique numeric block ID   |
+| `param` | Gain, time constant, etc. |
+
+#### Block Types (Defined So Far)
+
+| Type | Meaning                  |
+| ---- | ------------------------ |
+| `1`  | RC Integrator            |
+| `2`  | Memristor Integrator     |
+| `3`  | Summer                   |
+| `4`  | Gain / Scaling Amplifier |
+| `5`  | Nonlinear Function Block |
+| `9`  | Input / Output           |
+
+---
+
+## 4. PATCH / WIRING COMMANDS
+
+*(Micropatch equivalent)*
+
+### `WIRE`
+
+```
+(src dst -- )
+```
+
+Declare a patch cable (connection) from `src` to `dst`.
+Stored as data in patch table `p`.
+
+---
+
+### `PATCH-CHECK`
+
+```
+(-- )
+```
+
+Performs static verification of the patch:
+
+* block existence
+* legal source/destination
+* no illegal shorts
+* fan-in / fan-out constraints
+
+(Equivalent role to **APV**.)
+
+---
+
+### `PATCH-APPLY`
+
+```
+(-- )
+```
+
+Compile and apply the patch to hardware:
+
+1. Runs `PATCH-CHECK`
+2. Iterates through patch table
+3. Calls crossbar connect operations
+
+---
+
+## 5. INITIAL CONDITION COMMANDS
+
+### `IC-RC`
+
+```
+(value block_id -- )
+```
+
+Write an initial condition to an **RC integrator**.
+
+---
+
+### `IC-MEM`
+
+```
+(state block_id -- )
+```
+
+Write initial internal state `w(0)` to a **memristor integrator**.
+
+---
+
+## 6. HARDWARE ABSTRACTION COMMANDS
+
+*(External hooks – assumed implemented in backend)*
+
+These are **called**, not defined, but are part of the command set.
+
+| Command      | Stack Effect    | Purpose                 |
+| ------------ | --------------- | ----------------------- |
+| `CB-CONNECT` | `(src dst -- )` | Close crossbar switch   |
+| `CB-DISCONN` | `(src dst -- )` | Open crossbar switch    |
+| `CB-RESET`   | `( -- )`        | Reset crossbar hardware |
+| `CB-MODE`    | `(mode -- )`    | Set analog machine mode |
+
+---
+
+## 7. DATA STRUCTURE CONVENTIONS (IMPORTANT)
+
+### Block Record
+
+```
+[ type id param ]
+```
+
+Stored in block table `b`.
+
+---
+
+### Patch Cable Record
+
+```
+[ src dst ]
+```
+
+Stored in patch table `p`.
+
+---
+
+## 8. COMPLETE COMMAND LIST (FLAT)
+
+For clarity, here is the **flat list of commands** introduced so far:
+
+```
+RESET
+IC
+HOLD
+RUN
+
+BLOCK+
+WIRE
+PATCH-CHECK
+PATCH-APPLY
+
+IC-RC
+IC-MEM
+
+CB-CONNECT
+CB-DISCONN
+CB-RESET
+CB-MODE
+```
+
+That’s it.
+No invented syntax.
+No hidden operators.
+Everything else is **standard MINT**.
+
+---
+
+## 9. What Is *Deliberately Not Added (Yet)*
+
+To be explicit, we have **not yet defined**:
+
+* equation DSL
+* scaling solvers
+* unit handling
+* patch snapshots
+* visual dump commands
+* CSMP-style front end
+
+Those would be **next layers**, just like historically.
+
+---
+
+## 10. Sanity Check (Why This Is Correct)
+
+This command set corresponds exactly to:
+
+| Historical Role  | MINT Equivalent           |
+| ---------------- | ------------------------- |
+| Patch panel      | `WIRE`, `PATCH-APPLY`     |
+| APACHE / APV     | `PATCH-CHECK`             |
+| Micropatch       | `CB-CONNECT`              |
+| Operator console | `RESET / IC / HOLD / RUN` |
+
+You now have a **minimal, historically faithful, complete control vocabulary** for a software-defined analog computer.
+
+---
+
+If you want next, we can:
+
+1️⃣ add **LIST / INSPECT commands**
+2️⃣ add **snapshot save/load**
+3️⃣ design a **CSMP-like equation front end**
+4️⃣ formalise **memristor dynamics**
+
+Say the number.
