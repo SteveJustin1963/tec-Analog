@@ -1,3 +1,8 @@
+![59768314_2183250095045346_7398950653424304128_n](https://github.com/user-attachments/assets/bf3d6d35-c7c1-4e82-9948-6aa506b54d9f)
+
+
+
+
 Integrate tec1 with analg cct and control the cct layout 
 considerations
 - connect analog cct to the tec1 via adc/dac bridge
