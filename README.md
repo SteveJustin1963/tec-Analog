@@ -11,6 +11,8 @@ considerations
 
 ### cross connect 
 - https://hackaday.io/project/191238-jumperless
+- https://hackaday.com/2023/08/25/hackaday-prize-2023-jumperless-the-jumperless-jumperboard/
+- 
 
 
 
