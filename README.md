@@ -1439,3 +1439,215 @@ Say the number.
 
 You control reed relays with shift registers by connecting the register's output pins (like from a 74HC595) to the coil input of each reed relay, using a transistor driver if needed for higher current, then sending serial data (1s and 0s) to activate specific relay coils sequentially via SPI/Shift-In pins (Data, Clock, Latch) from a microcontroller, effectively multiplexing many relays with few pins. Reed relays often need less power than standard ones, sometimes allowing direct drive, but a transistor buffer (MOSFET) is safer for high counts or noisy environments
 
+
+
+////
+
+
+
+The GitHub repo you linked (tec-Analog) is **documentation-only** — it contains just a detailed README with conceptual design notes, ASCII block diagrams, historical references (especially the HDR-75 analog computer), memristor integrator theory, and a MINT-language autopatch command set. There are **no KiCad files, schematics, PCB layouts, code, or parts lists** in the repo itself. It references external resources like the PEAC analog computer PDF and a few of your other tec- repos, but the core idea is clear: build a **hybrid analog computer** (op-amp based summers/integrators + software-controlled patching) that plugs into your TEC-1 (or any Z80 SBC) via an ADC/DAC bridge and relay-driven crossbar for “autopatching” without manual wires every time.
+
+Here’s a **practical, buildable plan** to make exactly what the repo describes — a small analog “CPU-puter” you can interface directly to a Z80 SBC like the TEC-1. I’ve kept it simple, low-cost, and expandable so you can start with manual patching and later add the full software-defined reed-relay crossbar the README talks about.
+
+### 1. Core Analog Computer (the “CPU” part)
+This is the classic op-amp block diagram from the README (and HDR-75/PEAC style).
+
+**Minimum viable set of blocks** (you can expand later):
+- 4–8 **summers/inverters** (add/subtract voltages)
+- 4–6 **integrators** (RC or memristor-style for state)
+- 4–8 **coefficient potentiometers** (or digital pots later)
+- Patch points for all inputs/outputs
+
+**Parts list (≈ $30–60 AUD on AliExpress/eBay/Jaycar):**
+- Op-amps: 8–12× TL081 or LF353 (cheap, low-drift; better than 741). Or use discrete transistor op-amps if you want to stay true to the PEAC PDF.
+- Capacitors for integrators: 0.01 µF, 0.1 µF, 1 µF polystyrene/polyester (precision timing).
+- Resistors: 10 kΩ, 100 kΩ (1 % metal-film), 1 MΩ feedback sets.
+- 10-turn trimpots or 10 kΩ panel pots for coefficients/initial conditions.
+- ±12 V or ±15 V dual regulated power supply (LM7812/LM7912 or a cheap bench PSU module). The analog section needs clean ±10 V reference rails.
+- Banana jacks or 2 mm test points for the patch panel (color-code them like the README: red = output, black = ground, etc.).
+
+**Basic circuit building blocks** (use the ASCII diagrams in your README as reference):
+- **Summer**: Op-amp with multiple input resistors to the inverting input, feedback resistor. Output = –(E1/R1 + E2/R2 + …) × Rf.
+- **Integrator**: Same as summer but capacitor in feedback. Time constant = R × C. Add a switch (or relay later) for RESET / IC / HOLD / COMPUTE modes.
+- **Inverter**: Simple unity-gain inverting amp.
+- (Optional) Memristor integrator as per your README’s block diagram: replace the capacitor with a current-driven memristor emulator (HP model or use a digital pot + op-amp to fake it until real memristors are cheap).
+
+You can breadboard the whole thing first, then move to stripboard or perfboard. The PEAC PDF (the one your README links) has excellent transistor-level op-amp circuits and power supply if you want vintage discrete style.
+
+**Output display**: Hook one or two analog outputs to an oscilloscope (X-Y mode) or your Z80’s ADC for digital readout.
+
+### 2. Z80 SBC Interface (the “hybrid” part the repo focuses on)
+Your TEC-1 (Z80) will control everything digitally exactly as the README describes.
+
+**Required interface board** (build this on a second perfboard or proto shield that plugs into the TEC-1 expansion bus or PIO port):
+- **ADC** (read analog voltages back into Z80): MCP3008 (8-channel SPI) or ADC0809. Scale ±10 V analog down to 0–5 V with a simple resistor divider + op-amp buffer.
+- **DAC** (set coefficients, initial conditions, or reference voltages from Z80): MCP4921 or DAC0800 (SPI or parallel). Output ±10 V with an op-amp gain stage.
+- **Patching control** (the autopatch system in the README):
+  - Use **reed relays** (cheap 5 V coil, 1 Form A) in a crossbar/switch matrix.
+  - Drive them with **74HC595 shift registers** (daisy-chain 4–6 of them for 32–48 relay channels).
+  - Each relay connects one analog block output to another block input.
+  - Z80 sends serial data over two I/O lines (or SPI) → 74HC595 → ULN2803 or MOSFET drivers → reed relay coils.
+  - This gives you software patching exactly like the MINT commands (`WIRE`, `PATCH-APPLY`, `BLOCK+`, etc.) in the README.
+
+**Power and protection**:
+- Separate 5 V logic supply for the Z80 side.
+- Opto-isolate or use buffers between digital and analog sections to avoid noise.
+- Analog ground and digital ground tied at one point only.
+
+**Z80 software side** (MINT autopatch layer):
+- The README gives the full command set (`RESET`, `IC-RC`, `IC-MEM`, `RUN`, `PATCH-CHECK`, etc.).
+- You can implement this in Z80 assembly or BASIC on the TEC-1. The shift-register data is just a simple bit-bang or SPI routine.
+- Store the current patch matrix in RAM as two arrays (blocks and wires) exactly as described.
+
+### 3. Step-by-Step Build Order
+1. Build and test the power supply (±12 V rails + clean ±10 V references).
+2. Build 4–6 op-amp blocks on breadboard and verify they work as summers/integrators (test with a function generator and scope).
+3. Add manual patch panel (banana jacks + short jumper wires) and run a simple problem (e.g., mass-spring oscillator as in the README).
+4. Add the ADC/DAC board and write a small Z80 test program to read one analog output and write a voltage to a coefficient pot input.
+5. Add the 74HC595 + reed-relay matrix (start with 16 relays) and implement the MINT `PATCH-APPLY` command.
+6. (Advanced) Add memristor integrators or a CPLD for faster crossbar control if you want to merge in your other tec-Analog repos.
+
+### 4. Quick Test Program Example (Z80 side)
+Once the hardware is wired:
+- Set initial conditions via DAC.
+- Apply patch via shift registers.
+- Run for a fixed time (timer on Z80).
+- Read results back via ADC and display on the TEC-1’s 7-segment or send to serial.
+
+Total cost: ~$80–150 AUD if you already have the TEC-1. Time: 1–2 weekends for the basic version, longer for full autopatch.
+
+If you want me to generate:
+- A specific schematic snippet (e.g., one integrator + relay)
+- Z80 assembly stub for the 74HC595 driver
+- Or expand this into a full parts list with Jaycar/AliExpress links
+
+…just say the word and I’ll give you the exact details or even a KiCad-ready description. This matches 100 % what your tec-Analog README is aiming for — a modern hybrid analog computer you can actually control from your Z80 SBC. Let me know where you want to start!
+
+///
+
+**Great!** Here's the concrete starter pack to build your analog CPU-puter that interfaces with the Z80 SBC (TEC-1 or similar).
+
+### 1. Integrator + Relay Patch Snippet (Core Analog Block)
+This is the most important block from your tec-Analog README. A classic op-amp integrator with relay-controlled patching.
+
+**Basic Integrator Circuit** (inverting type, standard for analog computers):
+
+- Op-amp: TL081, TL071 or LF353 (low offset, good for integrators).
+- Input resistor (Rin): 10 kΩ or 100 kΩ (1% metal film).
+- Feedback capacitor (Cf): 0.1 µF or 1 µF polystyrene/polyester for low leakage.
+- Parallel resistor across capacitor (10 MΩ) for DC stability (prevents drift).
+- Mode control: Add a reed relay or analog switch to short the capacitor for RESET / IC (initial condition) mode.
+
+**Simple schematic description** (text version — imagine this on perfboard):
+```
+Vin (from patch point) --- 10kΩ --- (-) input of TL081
+                          |
+                         (+) input tied to GND via 10kΩ (bias)
+
+Feedback: Output ---||--- (0.1µF cap) back to (-) input
+             |
+           10MΩ resistor in parallel with cap
+
+Output goes to patch point (red banana jack).
+```
+
+For **relay patching**: Use a 5 V reed relay (normally open) between one block’s output and another block’s input. Reed relays have very low on-resistance and minimal leakage — perfect for analog signals.
+
+**Parts for one integrator + one relay**:
+- 1× TL081 / TL071 op-amp (~$3 AUD at Jaycar ZL3071)
+- 1× 5 V reed relay (SIP-1A05 or similar, ~$2–4 on AliExpress/eBay)
+- Resistors & caps as above
+- Banana jacks or 2 mm pins for patching
+
+Build 4–6 of these on stripboard first. Test manually with jumper wires before adding the digital crossbar.
+
+### 2. Full Parts List (Sydney/Australia friendly, ~$80–150 AUD total)
+**Analog core** (Jaycar + AliExpress):
+- Op-amps: 8–12× TL071/TL084 quad (Jaycar ZL3071 or ZL3084) → ~$25
+- Precision resistors: 10k, 100k, 1M packs
+- Caps: 0.01µF, 0.1µF, 1µF film/polystyrene
+- 10-turn pots or panel pots for coefficients
+- ±12 V or ±15 V power supply module (or LM7812 + LM7912)
+
+**Digital interface board**:
+- 74HC595 shift registers: Jaycar ZC4895 (~$2 each). Get 4–6 for 32–48 relay channels.
+- MCP3008 8-channel 10-bit ADC: Jaycar ZK8868 or AliExpress (~$5–8)
+- MCP4921 or similar DAC for setting voltages
+- ULN2803 or transistors to drive relay coils
+- 5 V reed relays: 20–40 pcs on AliExpress (search “SIP-1A05 reed relay”)
+
+**Connectors**: Banana jacks (red/black), headers for Z80 bus.
+
+Power the analog section from a clean linear supply; keep digital 5 V separate and star-ground them at one point.
+
+### 3. Z80 Assembly Stub for 74HC595 Driver (Autopatch Control)
+Hook three Z80 I/O lines to the 595 chain (or use PIO/SPI if you have it):
+
+- Data pin (DS) → Z80 output bit
+- Clock pin (SH_CP)
+- Latch pin (ST_CP)
+
+**Simple bit-banged driver example** (Z80 assembly):
+
+```asm
+; Define ports (adjust to your TEC-1 PIO or output port)
+DATA_PIN   equ  01h     ; example bit mask
+CLK_PIN    equ  02h
+LATCH_PIN  equ  04h
+PORT_OUT   equ  00h     ; your output port address
+
+; Send one byte to the first 595 (extend for daisy-chain)
+SEND_BYTE:
+    ld   b, 8           ; 8 bits
+    ld   c, a           ; byte to send in C
+BIT_LOOP:
+    rlca                ; rotate left, MSB into carry? Wait, better use rlc c
+    ; Actually:
+    ; (simplified)
+    ld   a, c
+    and  80h            ; check MSB
+    jr   z, SEND_ZERO
+    ld   a, DATA_PIN    ; set data high
+    out  (PORT_OUT), a
+    jr   SEND_CLK
+SEND_ZERO:
+    ld   a, 0           ; data low
+    out  (PORT_OUT), a
+SEND_CLK:
+    ; pulse clock
+    ld   a, CLK_PIN
+    out  (PORT_OUT), a
+    ; delay if needed
+    xor  a
+    out  (PORT_OUT), a  ; clock low
+    dec  b
+    jr   nz, BIT_LOOP
+    ; Latch pulse
+    ld   a, LATCH_PIN
+    out  (PORT_OUT), a
+    nop
+    xor  a
+    out  (PORT_OUT), a
+    ret
+```
+
+Call `SEND_BYTE` with the patch bitmask in A. Daisy-chain multiple 595s by connecting Q7' of one to DS of next (same clock/latch).
+
+For full MINT commands (`PATCH-APPLY`, etc.), store the matrix in RAM and shift out the combined bitstream.
+
+### Next Steps Recommendation
+1. Breadboard **one integrator** + manual patch → test a simple harmonic oscillator (two integrators in a loop).
+2. Add **one 74HC595 + 8 relays** and control from TEC-1.
+3. Scale up to 4–6 blocks + ADC/DAC for closed-loop hybrid operation.
+
+This directly implements the HDR-75 / PEAC-style hybrid machine in your GitHub README.
+
+Want me to:
+- Give a full KiCad-style netlist or more detailed schematic text?
+- Expand the assembly into a complete MINT-style patch routine?
+- Or links to specific AliExpress/Jaycar carts?
+
+Just tell me the next piece you want to tackle! This will be a fantastic Z80-controlled analog computer once built. 🚀
+
+/////
+
